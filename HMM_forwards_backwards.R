@@ -33,7 +33,7 @@ forwards_backwards <- function(q, A, B, y) {
   N <- length(y)  # t = 1, 2, ..., N
   
   alpha <- matrix(0, nrow = N, ncol = K)  # filtered: alpha[t, i] = P(X_t = i | y_{1:t})
-  gamma <- matrix(0, nrow = N, ncol = K)  # smoothed: gamma[t, i] = P(X_t = i | y_{1:T})
+  gamma <- matrix(0, nrow = N, ncol = K)  # smoothed: gamma[t, i] = P(X_t = i | y_{1:N})
   
   ## Forwards pass
   
@@ -52,6 +52,8 @@ forwards_backwards <- function(q, A, B, y) {
   
   # First step
   gamma[N, ] <- alpha[N, ]
+  
+  # Next steps
   if (N > 1) for (t in (N - 1):1) {
     D <- t(  # D[j, i] = P(X_t = i | X_{t + 1} = j, y_{1:t})
            apply(
