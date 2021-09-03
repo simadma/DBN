@@ -75,29 +75,29 @@ K <- 2  # Number of categories for hidden variable
 L <- 3  # Number of categories for observed variable
 
 # States
-healthy <- 1
-fever <- 2
+rainy <- 1
+sunny <- 2
 
 # Define transition probability matrix
 A <- matrix(0, K, K)
-A[healthy, healthy] <- 0.7
-A[healthy, fever] <- 0.3
-A[fever, healthy] <- 0.4
-A[fever, fever] <- 0.6
+A[rainy, rainy] <- 0.7
+A[rainy, sunny] <- 0.3
+A[sunny, rainy] <- 0.4
+A[sunny, sunny] <- 0.6
 
 # Symbols
-normal <- 1
-cold <- 2
-dizzy <- 3
+walk <- 1
+shop <- 2
+clean <- 3
 
 # Define emission probability matrix
 B <- matrix(0, K, L)
-B[healthy, normal] <- 0.1
-B[healthy, cold] <- 0.4
-B[healthy, dizzy] <- 0.5
-B[fever, normal] <- 0.6
-B[fever, cold] <- 0.3
-B[fever, dizzy] <- 0.1
+B[rainy, walk] <- 0.1
+B[rainy, shop] <- 0.4
+B[rainy, clean] <- 0.5
+B[sunny, walk] <- 0.6
+B[sunny, shop] <- 0.3
+B[sunny, clean] <- 0.1
 
 # Starting probabilities of the states
 start <- c(0.6, 0.4)
@@ -110,8 +110,8 @@ inf_res <- forwards_backwards(start, A, B, y = chain$obs)
 
 library(HMM)  # Compare result with HMM::posterior()
 hmm <- initHMM(
-  States        = c(healthy, fever),
-  Symbols       = c(normal, cold, dizzy),
+  States        = c(rainy, sunny),
+  Symbols       = c(walk, shop, clean),
   startProbs    = start,
   transProbs    = A,
   emissionProbs = B
