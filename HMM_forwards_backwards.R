@@ -122,4 +122,4 @@ post <- t(posterior(hmm, chain$obs))
 head(post)              # posterior marginals
 head(inf_res$smoothed)  # identical
 
-sum((post - inf_res$smoothed)^2)  # ~zero
+norm(post - inf_res$smoothed, type = '2')  # ~zero
