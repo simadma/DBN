@@ -43,9 +43,8 @@ forwards_backwards <- function(q, A, B, y) {
   
   # Next steps
   if (N > 1) for (t in 2:N) {
-    q <- t(A) %*% alpha[t - 1, ]  # P(X_t | y_{1:(t - 1)})
-    phi <- B[, y[t]] * q
-    alpha[t, ] <- phi / sum(phi)
+    phi <- B[, y[t]] * (t(A) %*% alpha[t - 1, ])  # Proportional to P(X_t | y_{1:t})
+    alpha[t, ] <- phi / sum(phi)                  # Normalize
   }
   
   ## Backwards pass
@@ -55,13 +54,8 @@ forwards_backwards <- function(q, A, B, y) {
   
   # Next steps
   if (N > 1) for (t in (N - 1):1) {
-    D <- t(  # D[j, i] = P(X_t = i | X_{t + 1} = j, y_{1:t})
-           apply(
-             X      = t(A) %*% diag(alpha[t, ]),
-             MARGIN = 1, 
-             FUN    = function(x) x / sum(x)  # Normalize each row
-           )
-         )
+    # D[j, i] = P(X_t = i | X_{t + 1} = j, y_{1:t})
+    D <- t(apply(t(A * alpha[t, ]), 1, function(x) x / sum(x)))
     gamma[t, ] <- t(D) %*% gamma[t + 1, ]
   }
   
