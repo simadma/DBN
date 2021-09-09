@@ -33,19 +33,25 @@ forwards_backwards <- function(q, A, B, y) {
   N <- length(y)  # t = 1, 2, ..., N
   
   alpha <- matrix(0, nrow = N, ncol = K)  # filtered: alpha[t, i] = P(X_t = i | y_{1:t})
+  const <- numeric(N)                     # const[t] = P(y_t | y_{1:t - 1})
   gamma <- matrix(0, nrow = N, ncol = K)  # smoothed: gamma[t, i] = P(X_t = i | y_{1:N})
   
   ## Forwards pass
   
   # First step
-  phi <- B[, y[1]] * q          # Proportional to P(X_1 | y_1)
-  alpha[1, ] <- phi / sum(phi)  # Normalize
+  t <- 1
+  phi <- B[, y[t]] * q          # Proportional to P(X_1 | y_1)
+  const[t] <- sum(phi)          # P(y_1)
+  alpha[t, ] <- phi / const[t]  # Normalize
   
   # Next steps
   if (N > 1) for (t in 2:N) {
     phi <- B[, y[t]] * (t(A) %*% alpha[t - 1, ])  # Proportional to P(X_t | y_{1:t})
-    alpha[t, ] <- phi / sum(phi)                  # Normalize
+    const[t] <- sum(phi)                          # P(y_t | y_{1:t - 1})
+    alpha[t, ] <- phi / const[t]                  # Normalize
   }
+  
+  log_lik <- sum(log(const))  # log P(y_{1:N})
   
   ## Backwards pass
   
@@ -59,7 +65,7 @@ forwards_backwards <- function(q, A, B, y) {
     gamma[t, ] <- t(D) %*% gamma[t + 1, ]
   }
   
-  list(filtered = alpha, smoothed = gamma)
+  list(filtered = alpha, smoothed = gamma, log_lik = log_lik)
 }
 
 ##########################################################################################
