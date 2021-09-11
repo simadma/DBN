@@ -79,7 +79,7 @@ rainy <- 1
 sunny <- 2
 
 # Define transition probability matrix
-A <- matrix(0, K, K)
+A <- matrix(0, K, K, dimnames = list(c("rainy", "sunny"), c("rainy", "sunny")))
 A[rainy, rainy] <- 0.7
 A[rainy, sunny] <- 0.3
 A[sunny, rainy] <- 0.4
@@ -91,7 +91,7 @@ shop <- 2
 clean <- 3
 
 # Define emission probability matrix
-B <- matrix(0, K, L)
+B <- matrix(0, K, L, dimnames = list(c("rainy", "sunny"), c("walk", "shop", "clean")))
 B[rainy, walk] <- 0.1
 B[rainy, shop] <- 0.4
 B[rainy, clean] <- 0.5
@@ -100,7 +100,7 @@ B[sunny, shop] <- 0.3
 B[sunny, clean] <- 0.1
 
 # Starting probabilities of the states
-start <- c(0.6, 0.4)
+start <- c("rainy" = 0.6, "sunny" = 0.4)
 
 
 set.seed(139)
