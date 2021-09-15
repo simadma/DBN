@@ -35,33 +35,25 @@ forwards_backwards <- function(q, A, B, y) {
   alpha <- matrix(0, nrow = N, ncol = K)  # filtered: alpha[t, i] = P(X_t = i | y_{1:t})
   const <- numeric(N)                     # const[t] = P(y_t | y_{1:t-1})
   xi <- array(0, dim = c(K, K, N - 1))    # xi[i, j, t-1] =
-  #   P(X_{t-1} = i, X_t = j | y_{1:N})
+                                          #   P(X_{t-1} = i, X_t = j | y_{1:N})
   gamma <- matrix(0, nrow = N, ncol = K)  # smoothed: gamma[t, i] = P(X_t = i | y_{1:N})
   
   
   ## Forwards pass
-  
-  # First step
   t <- 1
   phi <- B[, y[t]] * q          # Proportional to P(X_1 | y_1)
   const[t] <- sum(phi)          # P(y_1)
   alpha[t, ] <- phi / const[t]  # Normalize
-  
-  # Next steps
   if (N > 1) for (t in 2:N) {
     phi <- B[, y[t]] * (t(A) %*% alpha[t - 1, ])  # Proportional to P(X_t | y_{1:t})
     const[t] <- sum(phi)                          # P(y_t | y_{1:t-1})
     alpha[t, ] <- phi / const[t]                  # Normalize
   }
   
-  log_lik <- sum(log(const))  # log P(y_{1:N})
+  log_lik <- sum(log(const))                      # Log likelihood = log P(y_{1:N})
   
   ## Backwards pass
-  
-  # First step
   gamma[N, ] <- alpha[N, ]
-  
-  # Next steps
   if (N > 1) for (t in N:2) {
     ratio <- gamma[t, ] / alpha[t, ]              # Update factor
     r <- B[, y[t]] * ratio                        # Multiplied by P(y_t | X_t)
@@ -124,7 +116,11 @@ hmm <- initHMM(
 
 post <- t(posterior(hmm, chain$obs))
 
-head(post)              # posterior marginals
-head(inf_res$smoothed)  # identical
-
+time <- 850:1000
+plot(chain$state[time] - 1,
+  type = 'l', main = "Probability of weather being sunny",
+  xlab = "time", ylab = "P(X_t = sunny | obs)"
+)
+lines(inf_res$smoothed[time, 2], col = 'blue', lwd = 2)  # From our algorithm
+lines(post[time, 2], col = 'red', lty = 2, lwd = 2)      # From HMM::posterior()
 norm(post - inf_res$smoothed, type = '2')  # ~zero
