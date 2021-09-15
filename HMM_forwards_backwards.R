@@ -33,8 +33,11 @@ forwards_backwards <- function(q, A, B, y) {
   N <- length(y)  # t = 1, 2, ..., N
   
   alpha <- matrix(0, nrow = N, ncol = K)  # filtered: alpha[t, i] = P(X_t = i | y_{1:t})
-  const <- numeric(N)                     # const[t] = P(y_t | y_{1:t - 1})
+  const <- numeric(N)                     # const[t] = P(y_t | y_{1:t-1})
+  xi <- array(0, dim = c(K, K, N - 1))    # xi[i, j, t-1] =
+  #   P(X_{t-1} = i, X_t = j | y_{1:N})
   gamma <- matrix(0, nrow = N, ncol = K)  # smoothed: gamma[t, i] = P(X_t = i | y_{1:N})
+  
   
   ## Forwards pass
   
@@ -47,7 +50,7 @@ forwards_backwards <- function(q, A, B, y) {
   # Next steps
   if (N > 1) for (t in 2:N) {
     phi <- B[, y[t]] * (t(A) %*% alpha[t - 1, ])  # Proportional to P(X_t | y_{1:t})
-    const[t] <- sum(phi)                          # P(y_t | y_{1:t - 1})
+    const[t] <- sum(phi)                          # P(y_t | y_{1:t-1})
     alpha[t, ] <- phi / const[t]                  # Normalize
   }
   
@@ -59,13 +62,15 @@ forwards_backwards <- function(q, A, B, y) {
   gamma[N, ] <- alpha[N, ]
   
   # Next steps
-  if (N > 1) for (t in (N - 1):1) {
-    # D[j, i] = P(X_t = i | X_{t + 1} = j, y_{1:t})
-    D <- t(apply(t(A * alpha[t, ]), 1, function(x) x / sum(x)))
-    gamma[t, ] <- t(D) %*% gamma[t + 1, ]
+  if (N > 1) for (t in N:2) {
+    ratio <- gamma[t, ] / alpha[t, ]              # Update factor
+    r <- B[, y[t]] * ratio                        # Multiplied by P(y_t | X_t)
+    prop_to_xi <- alpha[t - 1, ] * t(t(A) * r)    # Same as diag(alpha[t-1, ]) A diag(r)
+    xi[,, t - 1] <- prop_to_xi / sum(prop_to_xi)  # Two-slice P(X_{t-1}, X_t | y_{1:N})
+    gamma[t - 1, ] <- rowSums(xi[,, t - 1])       # Marginalize to P(X_{t-1} | y_{1:N})
   }
   
-  list(filtered = alpha, smoothed = gamma, log_lik = log_lik)
+  list(filtered = alpha, smoothed = gamma, xi = xi, log_lik = log_lik)
 }
 
 ##########################################################################################
