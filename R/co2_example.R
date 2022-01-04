@@ -1,48 +1,11 @@
-source("simulation.R")
-source("roll_unroll.R")
-source("HMM_forwards_backwards.R")
-source("idx_to_vals_and_vals_to_idx.R")
-source("mk_cpt.R")
-
-# prob_leakage <- 0.025
-# N <- 5
-# tables <- create_CO2_DBN(prob_leakage, N)
-# 
-# q <- with(tables, joint_CPT(q_CPTs))
-# A <- with(tables, joint_CPT(A_CPTs))
-# B <- with(tables, joint_CPT(B_CPTs))
-# 
-# set.seed(28)
-# TT <- 100  # Number of slices
-# chain <- HMM_sim(q$prob, A$prob, B$prob, TT)
-# # chain$state
-# # chain$obs
-# state_vals <- with(chain, idx_to_vals(state, rep(2, N))) - 1
-# obs_vals <- with(chain, idx_to_vals(obs, rep(2, N))) - 1
-# state_vals
-# 
-# y <- chain$obs
-# y[sample(TT, size=80)] <- NA
-# 
-# inf_res <- forwards_backwards(q$prob, A$prob, B$prob, y)
-# 
-# margs <- marginal(inf_res$smoothed, A$ns$prob_of)
-# 
-# plot(margs[[1]][, 2], type = 'l', col=1, ylim=c(-0.1, 1.1))
-# lines(state_vals[, 1], col=1, lty=2, lwd=2)
-# lines(margs[[2]][, 2], col=2)
-# lines(state_vals[, 2], col=2, lty=2, lwd=2)
-# lines(margs[[3]][, 2], col=3)
-# lines(state_vals[, 3], col=3, lty=2, lwd=2)
-# lines(margs[[4]][, 2], col=4)
-# lines(state_vals[, 4], col=4, lty=2, lwd=2)
-
-
-# idx_to_vals(which(A$prob[1, ] > 0), ns = rep(2, N)) - 1
-# A$prob
-
-
-
+source("R/simulation.R")
+source("R/roll_unroll.R")
+source("R/HMM_forwards_backwards.R")
+source("R/idx_to_vals_and_vals_to_idx.R")
+source("R/mk_cpt.R")
+library(ggplot2)
+library(dplyr)
+library(tidyr)
 
 create_CO2_DBN <- function(N = 5, lambda, nu, kappa1, kappa2, thetaX, thetaP) {
   # Start probability tables
@@ -115,9 +78,9 @@ create_CO2_DBN <- function(N = 5, lambda, nu, kappa1, kappa2, thetaX, thetaP) {
   A_CPTs[["P1"]] <- mk_cpt(     #   P^(t-1)  X^(t)
     table    = matrix(c(1, 0, 0,  #   1       1
                         1, 0, 0,  #           2
-                        0, 1, 0,  #   2       1
+                        1, 0, 0,  #   2       1
                         0, 1, 0,  #           2
-                        0, 0, 1,  #   3       1
+                        1, 0, 0,  #   3       1
                         0, 0, 1), #           2
                       ncol = 3, byrow = T),
     prob_of  = "P1",
@@ -175,17 +138,17 @@ create_CO2_DBN <- function(N = 5, lambda, nu, kappa1, kappa2, thetaX, thetaP) {
                             1 - nu,     nu,                   0,  #                   2
                                  1,      0,                   0,  #          3        1
                             kappa1, kappa2, 1 - kappa1 - kappa2,  #                   2
-                                 0,      1,                   0,  # 2        1        1
+                                 1,      0,                   0,  # 2        1        1
+                                 1,      0,                   0,  #                   2
+                                 1,      0,                   0,  #          2        1
                                  0,      1,                   0,  #                   2
-                                 0,      1,                   0,  #          2        1
-                                 0,      1,                   0,  #                   2
-                                 0,      1,                   0,  #          3        1
+                                 1,      0,                   0,  #          3        1
                                  0, 1 - nu,                  nu,  #                   2
-                                 0,      0,                   1,  # 3        1        1
-                                 0,      0,                   1,  #                   2
-                                 0,      0,                   1,  #          2        1
-                                 0,      0,                   1,  #                   2
-                                 0,      0,                   1,  #          3        1
+                                 1,      0,                   0,  # 3        1        1
+                                 1,      0,                   0,  #                   2
+                                 1,      0,                   0,  #          2        1
+                                 1,      0,                   0,  #                   2
+                                 1,      0,                   0,  #          3        1
                                  0,      0,                   1), #                   2
                           ncol = 3, byrow = T),
         prob_of  = paste0("P", n),
@@ -235,12 +198,15 @@ condition_on_C <- function(tables, C = 1) {
 
 
 N <- 4
-lambda <- 0.10
-nu <- 0.10
-kappa1 <- 0.20
-kappa2 <- 0.30
-thetaX <- 0.70
-thetaP <- 0.65
+lambda <- 0.02   #      P(X = present | P_below = C)
+#              1 - nu = P(P = low | P_below = med)
+nu <- 0.005      #      P(P = med | P_prev = low, P_below = med)
+#                     = P(P = high | P_prev = med, P_below = high)
+kappa1 <- 0.985  #      P(P = low | P_prev = low, P_below = high)
+kappa2 <- 0.014  #      P(P = med | P_prev = low, P_below = high)
+# 1 - kappa1 - kappa2 = P(P = high | P_below = high)
+thetaX <- 0.80
+thetaP <- 0.60
 tables <- create_CO2_DBN(N, lambda, nu, kappa1, kappa2, thetaX, thetaP)
 
 # Compute joint distributions given C
@@ -252,10 +218,15 @@ for (C in 1:tables$q_CPTs$C$ns$prob_of) {
 }
 B <- with(tables, joint_CPT(B_CPTs))
 
+##########################################################################################
+##########################################################################################
 
-set.seed(21)
-TT <- 20  # Number of slices
-C <- sample(3, size = 1)  # Draw capillary threshold from {1, 2, 3} = {Low, Medium, High}
+
+
+## SIMULATE
+set.seed(2341 + 544)
+TT <- 550  # Number of slices
+C <- 2 #sample(3, size = 1)  # Draw capillary threshold from {1, 2, 3} = {Low, Medium, High}
 chain <- HMM_sim(q_given_C[[C]]$prob, A_given_C[[C]]$prob, B$prob, TT)
 
 state_vals <- with(chain, idx_to_vals(state, B$ns$given))
@@ -263,8 +234,20 @@ colnames(state_vals) <- B$var$given
 obs_vals <- with(chain, idx_to_vals(obs, B$ns$prob_of))
 colnames(obs_vals) <- B$var$prob_of
 
-state_vals[, c(1, 3, 5, 7)] - 1
-obs_vals[, c(1, 3, 5, 7)] - 1
+
+# Leakage
+tail(state_vals[, 1:N * 2 - 1] - 1)
+# obs_vals[, 1:N * 2 - 1] - 1
+
+# Pressure
+tail(state_vals[, 1:N * 2 - 2])
+# obs_vals[, 1:N * 2 - 2]
+
+y <- chain$obs
+# miss <- -seq(1, TT, 30)  # observations every 30th day
+miss <- -seq(1, TT, 90)  # observations every 90th day
+y[miss] <- NA  
+obs_vals[miss, ] <- NA
 
 inf_res <- list()
 for (C in 1:tables$q_CPTs$C$ns$prob_of) {
@@ -272,7 +255,7 @@ for (C in 1:tables$q_CPTs$C$ns$prob_of) {
     q = q_given_C[[C]]$prob,
     A = A_given_C[[C]]$prob,
     B = B$prob,
-    y = chain$obs
+    y = y
   )
 }
 logLiks <- c(inf_res[[1]]$log_lik, inf_res[[2]]$log_lik, inf_res[[3]]$log_lik)
@@ -283,24 +266,167 @@ gamma_mid <- post_c[1]*inf_res[[1]]$smoothed +
   post_c[3]*inf_res[[3]]$smoothed
 margs <- marginal(gamma_mid, B$ns$given)
 
-plot(margs[[1]][, 2], type = 'l', col=1, ylim=c(-0.1, 1.1))
-lines(state_vals[, 1] - 1, col=1, lty=2, lwd=2)
-lines(margs[[3]][, 2], col=2)
-lines(state_vals[, 3] - 1, col=2, lty=2, lwd=2)
-lines(margs[[5]][, 2], col=3)
-lines(state_vals[, 5] - 1, col=3, lty=2, lwd=2)
-lines(margs[[7]][, 2], col=4)
-lines(state_vals[, 7] - 1, col=4, lty=2, lwd=2)
 
 
-# If we knew C:
-margs <- marginal(inf_res[[3]]$smoothed, B$ns$given)
 
-plot(margs[[1]][, 2], type = 'l', col=1, ylim=c(-0.1, 1.1))
-lines(state_vals[, 1] - 1, col=1, lty=2, lwd=2)
-lines(margs[[3]][, 2], col=2)
-lines(state_vals[, 3] - 1, col=2, lty=2, lwd=2)
-lines(margs[[5]][, 2], col=3)
-lines(state_vals[, 5] - 1, col=3, lty=2, lwd=2)
-lines(margs[[7]][, 2], col=4)
-lines(state_vals[, 7] - 1, col=4, lty=2, lwd=2)
+## TIDY DATA
+dfX <- NULL
+dfP <- NULL
+layer <- 1
+for (i in 1:length(margs)) {
+  m <- margs[[i]]
+  if (i %% 2) {  # CO2 absence/presence
+    dfX <- rbind(dfX, data.frame(
+      days = 1:TT, absent = m[, 1], present = m[, 2], layer = as.character(layer),
+      observed = factor(obs_vals[, i], levels = 1:2, labels = c("absent", "present")),
+      actual = factor(state_vals[, i], levels = 1:2, labels = c("absent", "present"))
+    ))
+  } else {  # Pressure
+    dfP <- rbind(dfP, data.frame(
+      days = 1:TT, low = m[, 1], medium = m[, 2], high = m[, 3], layer = as.character(layer),
+      observed = factor(obs_vals[, i], levels = 1:3, labels = c("low", "medium", "high")),
+      actual = factor(state_vals[, i], levels = 1:3, labels = c("low", "medium", "high"))
+    ))
+    layer <- layer + 1
+  }
+}
+dfXprob <- dfX %>% 
+  select(days:layer) %>% 
+  pivot_longer(c(absent, present), names_to="category", values_to="probability") %>% 
+  mutate(category = factor(category, levels = c("present", "absent")))
+dfPprob <- dfP %>% 
+  select(days:layer) %>% 
+  pivot_longer(c(low, medium, high), names_to="pressure", values_to="probability") %>% 
+  mutate(pressure = factor(pressure, levels = c("high", "medium", "low")))
+
+dfXvalues <- dfX %>% 
+  select(days, layer, observed, actual) %>% 
+  drop_na()
+dfPvalues <- dfP %>% 
+  select(days, layer, observed, actual) %>% 
+  drop_na()
+
+## PLOT
+(p1 <- ggplot(dfXprob, aes(days, probability,
+                           group = interaction(layer, category), color = layer, linetype = category)
+  ) +
+  geom_line() +
+  theme_bw())
+
+# w <- 12   # cm  instead of 14
+# h <- 7    # cm  instead of 8
+# ggsave("migProbN4allOBS.pdf",       # ALL OBSERVATIONS, C=3 AND SEED=2341
+#   plot = p1, path = "Figures",
+#   width = w, height = h, units = "cm"
+# )
+# ggsave("migProbN4missingOBS.pdf",   # OBSERVATION EVERY 30TH DAY, C=3 AND SEED=2341
+#   plot = p1, path = "Figures",
+#   width = w, height = h, units = "cm"
+# )
+# ggsave("migProbN4moremissOBS.pdf",  # OBSERVATION EVERY 90TH DAY, C=2 AND SEED=2341+544
+#   plot = p1, path = "Figures",
+#   width = w, height = h, units = "cm"
+# )
+
+
+(p2 <- ggplot(dfXvalues, aes(days, observed, group = interaction(1, layer), color = layer)) +
+    geom_point(size = 1, position = position_jitter(height = .2)) +
+    geom_step(aes(y=actual), direction = "mid", linetype=2) +
+    labs(y = "") +
+    theme_bw())
+
+# ggsave("migValN4allOBS.pdf",
+#   plot = p2, path = "Figures",
+#   width = w, height = h, units = "cm"
+# )
+# ggsave("migValN4missingOBS.pdf",
+#   plot = p2, path = "Figures",
+#   width = w, height = h, units = "cm"
+# )
+# ggsave("migValN4moremissOBS.pdf",
+#   plot = p2, path = "Figures",
+#   width = w, height = h, units = "cm"
+# )
+
+
+(p3 <- ggplot(dfPprob, aes(days, probability,
+                           group = interaction(layer, pressure), color = layer, linetype = pressure)
+) +
+    geom_line() +
+    theme_bw())
+
+# ggsave("pressureProbN4allOBS.pdf",
+#   plot = p3, path = "Figures",
+#   width = w, height = h, units = "cm"
+# )
+# ggsave("pressureProbN4missingOBS.pdf",
+#   plot = p3, path = "Figures",
+#   width = w, height = h, units = "cm"
+# )
+# ggsave("pressureProbN4moremissOBS.pdf",
+#        plot = p3, path = "Figures",
+#        width = w, height = h, units = "cm"
+# )
+
+(p4 <- ggplot(dfPvalues, aes(days, observed, group = interaction(1, layer), color = layer)) +
+    geom_point(size = 1, position = position_jitter(height = .2)) +
+    geom_step(aes(y=actual), direction = "mid", linetype=2) +
+    labs(y = "") +
+    theme_bw())
+
+# ggsave("pressureValN4allOBS.pdf",
+#        plot = p4, path = "Figures",
+#        width = w, height = h, units = "cm"
+# )
+# ggsave("pressureValN4missingOBS.pdf",
+#        plot = p4, path = "Figures",
+#        width = w, height = h, units = "cm"
+# )
+# ggsave("pressureValN4moremissOBS.pdf",
+#        plot = p4, path = "Figures",
+#        width = w, height = h, units = "cm"
+# )
+
+
+
+
+
+
+
+
+# par(mfrow=c(1, 1))
+# plot(margs[[1]][, 2], type = 'l', col=1, ylim=c(-0.1, 1.1), main="P(gas=present) vs true")
+# lines(state_vals[, 1] - 1, col=1, lty=2, lwd=2)
+# lines(margs[[3]][, 2], col=2)
+# lines(state_vals[, 3] - 1, col=2, lty=2, lwd=2)
+# lines(margs[[5]][, 2], col=3)
+# lines(state_vals[, 5] - 1, col=3, lty=2, lwd=2)
+# lines(margs[[7]][, 2], col=4)
+# lines(state_vals[, 7] - 1, col=4, lty=2, lwd=2)
+# lines(margs[[9]][, 2], col=5)
+# lines(state_vals[, 9] - 1, col=5, lty=2, lwd=2)
+# 
+# 
+# par(mfrow=c(2, 1))
+# plot(margs[[2]][, 3], type = 'l', col=1, ylim=c(-0.1, 1.1), main="P(pressure=high)")
+# lines(margs[[4]][, 3], col=2)
+# lines(margs[[6]][, 3], col=3)
+# lines(margs[[8]][, 3], col=4)
+# plot(state_vals[, 2], type = 'l', col=1, lty=2, lwd=2, ylim=c(0.9, 3.1), main="True pressure")
+# lines(state_vals[, 4], col=2, lty=2, lwd=2)
+# lines(state_vals[, 6], col=3, lty=2, lwd=2)
+# lines(state_vals[, 8], col=4, lty=2, lwd=2)
+# 
+# 
+# 
+# # If we knew C:
+# margs <- marginal(inf_res[[3]]$smoothed, B$ns$given)
+# 
+# plot(margs[[1]][, 2], type = 'l', col=1, ylim=c(-0.1, 1.1))
+# lines(state_vals[, 1] - 1, col=1, lty=2, lwd=2)
+# lines(margs[[3]][, 2], col=2)
+# lines(state_vals[, 3] - 1, col=2, lty=2, lwd=2)
+# lines(margs[[5]][, 2], col=3)
+# lines(state_vals[, 5] - 1, col=3, lty=2, lwd=2)
+# lines(margs[[7]][, 2], col=4)
+# lines(state_vals[, 7] - 1, col=4, lty=2, lwd=2)

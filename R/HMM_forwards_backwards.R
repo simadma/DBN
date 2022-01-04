@@ -1,4 +1,4 @@
-source("normalize.R")
+source("R/normalize.R")
 
 ## Computes the posterior marginals
 # q: start probability of states
@@ -55,7 +55,6 @@ forwards_backwards <- function(q, A, B, y, learning = FALSE) {
                                             #   P(X_{t-1} = i, X_t = j | y_{1:N})
     for (t in 2:N) {
       prop_to_xi <- A * (alpha[t - 1, ] %*% t(o[t, ] * beta[t, ]))
-      print(sum(prop_to_xi))
       xi[t - 1,, ] <- prop_to_xi / sum(prop_to_xi)
     }
     return(list(filtered = alpha, smoothed = gamma, xi = xi, log_lik = log_lik))

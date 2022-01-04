@@ -1,12 +1,12 @@
-source("HMM_forwards_backwards.R")
-source("normalize.R")
+source("R/HMM_forwards_backwards.R")
+source("R/normalize.R")
 
 HMM_learn <- function(y, K, L,
                start   = normalize(runif(K)),
                A       = normalize(matrix(runif(K*K), K, K)),
                B       = normalize(matrix(runif(K*L), K, L)),
                maxiter = 500,
-               epsilon = 1e-8
+               epsilon = 1e-5
              ) {
   O <- model.matrix(~ factor(y) - 1)  # Convert obs to N by L matrix with L dummy variables
   

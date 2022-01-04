@@ -1,4 +1,5 @@
-source("idx_to_vals_and_vals_to_idx.R")
+source("R/idx_to_vals_and_vals_to_idx.R")
+source("R/mk_cpt.R")
 
 factor_product <- function(A, B) {
   # If any of A or B is an empty factor
@@ -27,13 +28,19 @@ table_to_factor <- function(tables) {
   factors <- list()
   tab_names <- names(tables)
   for (i in 1:length(tables)) {
-    name <- tab_names[i]  # Name of current table
-    t <- tables[[name]]   # Current table
-    l <- list()           # Create list to store table as a factor
+    # name <- tab_names[i]  # Name of current table
+    # t <- tables[[name]]   # Current table
+    # l <- list()           # Create list to store table as a factor
+    # l$var <- with(t$var, c(prob_of, given))
+    # l$ns <- with(t$ns, c(prob_of, given))
+    # l$val <- c(t$prob)      # Vectorize emission/transition probability matrix
+    # factors[[name]] <- l    # Store factor in factor list
+    t <- tables[[i]]  # Current table
+    l <- list()       # Create list to store table as a factor
     l$var <- with(t$var, c(prob_of, given))
     l$ns <- with(t$ns, c(prob_of, given))
-    l$val <- c(t$prob)      # Vectorize emission/transition probability matrix
-    factors[[name]] <- l    # Store factor in factor list
+    l$val <- c(t$prob)  # Vectorize emission/transition probability matrix
+    factors[[i]] <- l   # Store factor in factor list
   }
   factors
 }
@@ -76,6 +83,7 @@ joint_CPT <- function(tables) {
 }
 
 marginal <- function(gamma, ns) {
+  if (is.vector(gamma)) gamma <- t(gamma)
   TT <- nrow(gamma)  # Number of slices
   K <- ncol(gamma)   # Number of combinations of X_1^(t), X_2^(t), ..., X_N^(t) values
   N <- length(ns)    # Number of nodes
@@ -91,10 +99,38 @@ marginal <- function(gamma, ns) {
   for (node in 1:N) {
     marg <- matrix(0, TT, ns[node])
     for (j in 1:ns[node]) {
-      locs <- vals[, node] == j            # Locations where current node has value j
-      marg[, j] <- rowSums(gamma[, locs])  # Marginalize
+      locs <- vals[, node] == j  # Locations where current node has value j
+      marg[, j] <- rowSums(gamma[, locs, drop = FALSE])  # Marginalize
     }
     X_margs[[node]] <- marg
   }
   X_margs
+}
+
+cpt_from_joint_cpt <- function(joint_cpt, prob_of, given) {
+  # joint_cpt
+  #   var
+  #     prob_of
+  #     given
+  #   ns
+  #     prob_of
+  #     given
+  #   prob
+  cond_idx <- match(given, joint_cpt$var$given)
+  cond_ns <- joint_cpt$ns$given[cond_idx]
+  cond_vals <- idx_to_vals(1:prod(cond_ns), cond_ns)
+  cond_vals_full <- matrix(1, nrow(cond_vals), length(joint_cpt$var$given))
+  cond_vals_full[, cond_idx] <- cond_vals  # Now we have the value combinations needed
+  rows <- vals_to_idx(cond_vals_full, joint_cpt$ns$given)  # These are the rows we will use
+  
+  
+  var_idx <- match(prob_of, joint_cpt$var$prob_of)
+  var_ns <- joint_cpt$ns$prob_of[var_idx]
+  var_vals <- with(joint_cpt$ns, idx_to_vals(1:prod(prob_of), prob_of))
+  table <- matrix(0, length(rows), var_ns)
+  for (i in 1:var_ns) {
+    locs <- var_vals[, var_idx] == i
+    table[, i] <- rowSums(joint_cpt$prob[rows, locs, drop = FALSE])
+  }
+  mk_cpt(table=table, prob_of=prob_of, given = given, given_ns = cond_ns)
 }
